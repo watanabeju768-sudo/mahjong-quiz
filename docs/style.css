@@ -1,0 +1,376 @@
+/* 麻雀 点数計算クイズ — 画面スタイル
+   配色はライト/ダーク両対応。牌は実物と同じく常に白い面にする。 */
+
+:root {
+  --bg: #f2f4f3;
+  --surface: #ffffff;
+  --surface-2: #f7f8f8;
+  --text: #1c2321;
+  --text-dim: #66736e;
+  --border: #dde2e0;
+  --felt: #1f6b4d;
+  --felt-dark: #17523b;
+  --accent: #1f6b4d;
+  --ok: #17803d;
+  --ok-bg: #e6f5ec;
+  --ng: #c0392b;
+  --ng-bg: #fdecea;
+  --shadow: 0 1px 3px rgba(0, 0, 0, .08), 0 8px 24px rgba(0, 0, 0, .06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14181a;
+    --surface: #1c2124;
+    --surface-2: #23282b;
+    --text: #e8ecea;
+    --text-dim: #96a3a0;
+    --border: #2f363a;
+    --felt: #2b8763;
+    --felt-dark: #1d6349;
+    --accent: #4fb98a;
+    --ok: #5fd39a;
+    --ok-bg: #17301f;
+    --ng: #ff8a7a;
+    --ng-bg: #34191b;
+    --shadow: 0 1px 3px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0 16px 64px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  line-height: 1.7;
+  -webkit-text-size-adjust: 100%;
+}
+
+main { max-width: 760px; margin: 0 auto; }
+
+/* --- ヘッダー ------------------------------------------------------------ */
+
+.topbar {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 0 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.topbar h1 { font-size: 20px; margin: 0; letter-spacing: .02em; }
+
+.stats {
+  display: flex;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.stats b { color: var(--text); font-size: 15px; font-variant-numeric: tabular-nums; }
+
+.settings {
+  max-width: 760px;
+  margin: 0 auto 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.settings select {
+  font: inherit;
+  margin-left: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+.settings .check { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+
+/* --- カード -------------------------------------------------------------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+
+.loading { color: var(--text-dim); text-align: center; padding: 40px 0; }
+
+/* --- 問題表示 ------------------------------------------------------------ */
+
+.board { background: linear-gradient(160deg, var(--felt), var(--felt-dark)); border: none; color: #eef5f1; }
+.board .title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  background: rgba(255, 255, 255, .16);
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
+.badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.badge {
+  font-size: 13px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .22);
+  border: 1px solid rgba(255, 255, 255, .18);
+}
+.badge.strong { background: #f2c14e; color: #2b2200; border-color: transparent; font-weight: 700; }
+
+.row { margin-bottom: 16px; }
+.row:last-child { margin-bottom: 0; }
+.row-label { font-size: 12px; opacity: .8; margin-bottom: 6px; letter-spacing: .08em; }
+
+.hand { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.tiles { display: flex; flex-wrap: wrap; gap: 3px; }
+.win-group { display: flex; align-items: flex-end; gap: 6px; }
+.win-group::before {
+  content: "＋";
+  font-size: 18px;
+  opacity: .7;
+  padding-bottom: 16px;
+}
+.meld-group { display: flex; align-items: flex-end; gap: 8px; margin-top: 8px; }
+.meld-label { font-size: 12px; opacity: .8; padding-bottom: 16px; }
+
+/* --- 牌 ------------------------------------------------------------------ */
+
+/* 牌は「象牙色の下地（CSS）＋ 絵柄（tileface.js の SVG）」の二層構造。
+   下地の内側にわずかな窪みを描いて、彫り込まれた面らしく見せる。 */
+.tile {
+  --tile-face: #fdfbf2;
+  --tile-edge: #ccc5ae;
+  width: 45px;
+  height: 62px;
+  border-radius: 6px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(255, 255, 255, .9), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(170deg, #fffefa 0%, var(--tile-face) 45%, #f0ebdb 100%);
+  border: 1px solid #ded7c3;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .95),
+    inset 0 -2px 3px rgba(140, 128, 96, .28),
+    0 2px 0 var(--tile-edge),
+    0 3px 7px rgba(0, 0, 0, .28);
+  padding: 2px;
+  user-select: none;
+  flex: none;
+  position: relative;
+}
+.tile svg { display: block; width: 100%; height: 100%; }
+
+.tile.small { width: 34px; height: 47px; border-radius: 5px; padding: 1px; }
+
+.tile.win {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .95),
+    inset 0 -2px 3px rgba(140, 128, 96, .28),
+    0 2px 0 var(--tile-edge),
+    0 0 0 3px #f2c14e,
+    0 3px 10px rgba(0, 0, 0, .35);
+}
+.tile.rotated { transform: rotate(90deg); margin: 7px 7px 7px 0; }
+
+.dora-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dora-arrow { opacity: .75; font-size: 13px; }
+
+/* --- 回答フォーム -------------------------------------------------------- */
+
+.field { margin-bottom: 18px; }
+.field-label { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.hint { font-weight: 400; color: var(--text-dim); font-size: 12px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font: inherit;
+  font-size: 14px;
+  min-width: 44px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  transition: background .12s, border-color .12s, transform .06s;
+}
+.chip:hover:not(:disabled) { border-color: var(--accent); }
+.chip:active:not(:disabled) { transform: translateY(1px); }
+.chip.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+.chip:disabled { opacity: .5; cursor: default; }
+
+input[type="text"] {
+  font: inherit;
+  width: 100%;
+  max-width: 280px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+
+button.primary {
+  font: inherit;
+  font-weight: 700;
+  padding: 10px 22px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+button.primary:disabled { opacity: .4; cursor: default; }
+button.primary.big { padding: 12px 28px; font-size: 16px; }
+button.ghost {
+  font: inherit;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.next-wrap { text-align: center; margin: 8px 0 24px; }
+
+/* --- 結果 ---------------------------------------------------------------- */
+
+.verdict { text-align: center; font-size: 20px; font-weight: 800; margin-bottom: 16px; }
+.verdict.ok { color: var(--ok); }
+.verdict.ng { color: var(--ng); }
+
+.judge-list { display: grid; gap: 8px; margin-bottom: 22px; }
+.judge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border-left: 4px solid var(--border);
+}
+.judge.ok { background: var(--ok-bg); border-left-color: var(--ok); }
+.judge.ng { background: var(--ng-bg); border-left-color: var(--ng); }
+.judge .mark { font-weight: 800; }
+.judge.ok .mark { color: var(--ok); }
+.judge.ng .mark { color: var(--ng); }
+.judge .name { font-weight: 700; min-width: 3.5em; }
+.judge .yours { color: var(--text-dim); font-size: 13px; }
+.judge .truth { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.section-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  color: var(--text-dim);
+  margin: 22px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ふりがな（ruby）。読みは本文より小さく淡く出す。 */
+ruby { ruby-position: over; -webkit-ruby-position: before; }
+rt {
+  font-size: .62em;
+  font-weight: 500;
+  color: var(--text-dim);
+  letter-spacing: .01em;
+  text-align: center;
+}
+
+.yaku-list { display: flex; flex-wrap: wrap; gap: 10px 8px; }
+.yaku-item {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 14px 4px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.yaku-item b { color: var(--accent); margin-left: 6px; }
+.yaku-item.dora { border-style: dashed; }
+
+table.fu {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+table.fu td { padding: 8px 4px; border-bottom: 1px solid var(--border); line-height: 1.6; }
+table.fu td.num { text-align: right; width: 5em; }
+table.fu tr.total td { border-bottom: none; font-weight: 800; padding-top: 10px; }
+
+.points-box {
+  text-align: center;
+  padding: 18px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  margin-top: 10px;
+}
+.points-box .formula { font-size: 13px; color: var(--text-dim); }
+.points-box .value { font-size: 26px; font-weight: 800; letter-spacing: .01em; margin-top: 4px; }
+.points-box .detail { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+.points-box .level {
+  display: inline-block;
+  background: #f2c14e;
+  color: #2b2200;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 2px 10px 1px;
+  border-radius: 999px;
+  margin-left: 8px;
+  vertical-align: middle;
+  line-height: 1.6;
+}
+.points-box .level rt { color: rgba(43, 34, 0, .7); font-weight: 700; }
+
+.note {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.note b { color: var(--text); }
+
+footer {
+  max-width: 760px;
+  margin: 32px auto 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-align: center;
+  line-height: 1.9;
+}
+footer code { background: var(--surface-2); padding: 1px 6px; border-radius: 4px; }
+
+@media (max-width: 520px) {
+  .tile { width: 34px; height: 47px; }
+  .tile.small { width: 26px; height: 36px; }
+  .topbar { padding-top: 16px; }
+}

@@ -1,0 +1,45 @@
+{
+  "_comment": "点数の回答判定の共通テストケース。Python(quiz.py)とJS(quiz-core.js)の両方で同じ結果になることを検証する。scoreは正解の点数、textは回答、expectedは正誤。",
+  "scores": {
+    "child_ron_3900": { "isTsumo": false, "isDealer": false, "total": 3900, "main": 3900, "additional": 0 },
+    "dealer_ron_5800": { "isTsumo": false, "isDealer": true, "total": 5800, "main": 5800, "additional": 0 },
+    "child_tsumo_5200": { "isTsumo": true, "isDealer": false, "total": 5200, "main": 2600, "additional": 1300 },
+    "dealer_tsumo_12000": { "isTsumo": true, "isDealer": true, "total": 12000, "main": 4000, "additional": 4000 }
+  },
+  "parse": [
+    { "text": "7700", "expected": { "total": 7700 } },
+    { "text": "7700点", "expected": { "total": 7700 } },
+    { "text": " 7,700 ", "expected": { "total": 7700 } },
+    { "text": "2000オール", "expected": { "each": 2000 } },
+    { "text": "2000all", "expected": { "each": 2000 } },
+    { "text": "1300-2600", "expected": { "child": 1300, "dealer": 2600 } },
+    { "text": "1300/2600", "expected": { "child": 1300, "dealer": 2600 } },
+    { "text": "1,300／2,600", "expected": { "child": 1300, "dealer": 2600 } },
+    { "text": "", "expected": null },
+    { "text": "ろくせんてん", "expected": null },
+    { "text": "1300-", "expected": null }
+  ],
+  "check": [
+    { "score": "child_ron_3900", "text": "3900", "expected": true },
+    { "score": "child_ron_3900", "text": "3,900", "expected": true },
+    { "score": "child_ron_3900", "text": "3900オール", "expected": false },
+    { "score": "child_ron_3900", "text": "1300-2600", "expected": false },
+    { "score": "child_ron_3900", "text": "5200", "expected": false },
+
+    { "score": "dealer_ron_5800", "text": "5800", "expected": true },
+    { "score": "dealer_ron_5800", "text": "5800オール", "expected": false },
+
+    { "score": "child_tsumo_5200", "text": "5200", "expected": true },
+    { "score": "child_tsumo_5200", "text": "1300-2600", "expected": true },
+    { "score": "child_tsumo_5200", "text": "1300/2600", "expected": true },
+    { "score": "child_tsumo_5200", "text": "2600-1300", "expected": false },
+    { "score": "child_tsumo_5200", "text": "1300オール", "expected": false },
+    { "score": "child_tsumo_5200", "text": "2600", "expected": false },
+
+    { "score": "dealer_tsumo_12000", "text": "4000オール", "expected": true },
+    { "score": "dealer_tsumo_12000", "text": "12000", "expected": true },
+    { "score": "dealer_tsumo_12000", "text": "4000/4000", "expected": true },
+    { "score": "dealer_tsumo_12000", "text": "4000", "expected": false },
+    { "score": "dealer_tsumo_12000", "text": "4000-8000", "expected": false }
+  ]
+}

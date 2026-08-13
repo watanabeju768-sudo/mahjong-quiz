@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>麻雀 点数計算クイズ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <h1>🀄 麻雀 点数計算クイズ</h1>
+  <div class="stats" id="stats">
+    <span><b id="stat-total">0</b> 問</span>
+    <span>全問正解 <b id="stat-perfect">0</b></span>
+    <span>連続 <b id="stat-streak">0</b></span>
+  </div>
+</header>
+
+<div class="settings">
+  <label>難易度
+    <select id="difficulty">
+      <option value="easy">やさしい（門前・4翻まで）</option>
+      <option value="normal" selected>ふつう</option>
+      <option value="hard">むずかしい（役満あり）</option>
+    </select>
+  </label>
+  <label class="check">
+    <input type="checkbox" id="preset"> 学習用の定義済み問題を使う
+  </label>
+</div>
+
+<main>
+  <section class="card board" id="board">
+    <div class="loading">読み込み中…</div>
+  </section>
+
+  <section class="card answer" id="answer" hidden>
+    <div class="field">
+      <div class="field-label">翻数 <span class="hint">（役の翻数 ＋ ドラ）</span></div>
+      <div class="chips" id="han-chips"></div>
+    </div>
+
+    <div class="field" id="fu-field">
+      <div class="field-label">符</div>
+      <div class="chips" id="fu-chips"></div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">点数 <span class="hint" id="points-hint"></span></div>
+      <input type="text" id="points" inputmode="numeric" autocomplete="off"
+             placeholder="例: 3900">
+    </div>
+
+    <div class="actions">
+      <button id="submit" class="primary" disabled>答え合わせ</button>
+      <button id="giveup" class="ghost">わからない（答えを見る）</button>
+    </div>
+  </section>
+
+  <section class="card result" id="result" hidden></section>
+
+  <div class="next-wrap" id="next-wrap" hidden>
+    <button id="next" class="primary big">次の問題 →</button>
+  </div>
+</main>
+
+<footer>
+  ルール: 喰いタンあり / 赤ドラなし / 平和ツモ 20符 / 喰い平和形 30符 / 数え役満あり<br>
+  役判定と点数計算は
+  <a href="https://github.com/MahjongRepository/mahjong" target="_blank" rel="noopener noreferrer">mahjong</a>
+  ライブラリ（MIT License）による計算結果です。
+</footer>
+
+<!-- 出題・採点の取得方法。静的サイト版では build_static.py が
+     この行を api-static.js に差し替える。 -->
+<script src="api-server.js"></script>
+<script src="quiz-core.js"></script>
+<script src="tileface.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

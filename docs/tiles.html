@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>牌の絵柄一覧（開発用）</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  main { padding-top: 16px; }
+  .sheet { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 22px; }
+  .sheet .tile { width: 56px; height: 77px; }
+</style>
+</head>
+<body>
+<header class="topbar"><h1>牌の絵柄一覧（開発用）</h1></header>
+<main>
+  <div class="card">
+    <div class="section-title">萬子</div><div class="sheet" data-range="0,9"></div>
+    <div class="section-title">筒子</div><div class="sheet" data-range="9,18"></div>
+    <div class="section-title">索子</div><div class="sheet" data-range="18,27"></div>
+    <div class="section-title">字牌</div><div class="sheet" data-range="27,34"></div>
+    <div class="section-title">小さい表示（ドラ表示牌・副露で使うサイズ）</div>
+    <div class="sheet small-sheet" data-range="0,34"></div>
+  </div>
+</main>
+<script src="tileface.js"></script>
+<script>
+  document.querySelectorAll('.sheet').forEach((sheet) => {
+    const [from, to] = sheet.dataset.range.split(',').map(Number);
+    for (let tile = from; tile < to; tile += 1) {
+      const node = document.createElement('div');
+      node.className = sheet.classList.contains('small-sheet') ? 'tile small' : 'tile';
+      node.innerHTML = tileFaceSvg(tile);
+      node.title = tileName(tile);
+      sheet.appendChild(node);
+    }
+  });
+</script>
+</body>
+</html>

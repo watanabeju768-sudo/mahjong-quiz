@@ -4,8 +4,7 @@
 役判定と点数計算は [mahjong](https://github.com/MahjongRepository/mahjong) ライブラリ（MIT License）が
 行っているので、表示される正解は実戦のルールどおりです。
 
-**▶ 公開 URL: https://<ユーザー名>.github.io/mahjong-quiz/**
-（GitHub Pages を有効にしたら、このリンクを書き換えてください）
+**▶ 公開 URL: https://watanabeju768-sudo.github.io/mahjong-quiz/**
 
 ## できること
 

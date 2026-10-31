@@ -151,6 +151,8 @@ button { touch-action: manipulation; }
 }
 .settings .check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .settings input[type="checkbox"] { accent-color: var(--accent); width: 18px; height: 18px; margin: 0; }
+.settings-note { color: var(--accent); font-weight: 600; }
+.settings-note:empty { display: none; }
 
 /* --- カード -------------------------------------------------------------- */
 
@@ -308,6 +310,22 @@ button.term[aria-expanded="true"] .term-mark { background: var(--accent); color:
 /* --- 回答フォーム -------------------------------------------------------- */
 
 .field { margin-bottom: 20px; }
+
+/* キーボードで数字を打つと入る欄（PC のみ印を出す） */
+@media (hover: hover) and (pointer: fine) {
+  .field { position: relative; }
+  .field.active::before {
+    content: "";
+    position: absolute;
+    left: -12px;
+    top: 2px;
+    bottom: 2px;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--accent);
+  }
+}
+.chip.candidate { box-shadow: inset 0 0 0 2px var(--accent); }
 .field-label {
   font-size: .9375rem;
   font-weight: 600;
@@ -357,6 +375,40 @@ input[type="text"] {
   transition: box-shadow 120ms ease-out;
 }
 input[type="text"]::placeholder { color: var(--text-dim); }
+
+.points-row { display: flex; align-items: center; gap: 8px; }
+.points-row input[type="text"] { flex: 1 1 auto; }
+button.insert {
+  font: inherit;
+  font-size: .9375rem;
+  font-weight: 600;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 12px;
+  background: var(--fill);
+  color: var(--text);
+  cursor: pointer;
+  flex: none;
+}
+button.insert:active:not(:disabled) { transform: scale(.94); }
+button.insert:disabled { opacity: .45; cursor: default; }
+button.insert[hidden] { display: none; }
+
+.kbd-help { display: none; margin: 16px 0 0; font-size: .75rem; color: var(--text-dim); line-height: 1.8; }
+@media (hover: hover) and (pointer: fine) {
+  .kbd-help { display: block; }
+}
+kbd {
+  font: inherit;
+  font-size: .6875rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--fill-strong);
+  color: var(--text);
+}
 input[type="text"]:focus { outline: none; box-shadow: 0 0 0 4px var(--accent-tint), 0 0 0 1.5px var(--accent) inset; }
 
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
@@ -579,6 +631,18 @@ footer code { background: var(--fill); padding: 1px 6px; border-radius: 4px; }
 @media (max-width: 520px) {
   .tile { width: 34px; height: 47px; }
   .tile.small { width: 26px; height: 36px; }
+  /* 手牌 14 枚を 1 行に収める。牌の幅は画面幅から決め、隙間と「＋」を詰める */
+  .hand { flex-wrap: nowrap; gap: 5px; }
+  .hand .tiles { flex-wrap: nowrap; gap: 1px; }
+  .hand .tile {
+    width: min(34px, calc((100vw - 100px) / 14));
+    height: auto;
+    aspect-ratio: 45 / 62;
+    padding: 1px;
+    border-radius: 3px;
+  }
+  .win-group::before { display: none; }
+  .win-group .meld-label { display: none; }
   .tile.mini { width: 22px; height: 30px; }
   .topbar h1 { font-size: 1.25rem; }
   .card { padding: 16px; border-radius: 18px; }
@@ -588,6 +652,7 @@ footer code { background: var(--fill); padding: 1px 6px; border-radius: 4px; }
 
 @media (prefers-reduced-motion: reduce) {
   .chip, button.primary, button.ghost, input[type="text"], button.term, .tab, .segment { transition: none; }
+  button.insert:active:not(:disabled) { transform: none; opacity: .7; }
   button.term:active { transform: none; opacity: .7; }
   .chip:active:not(:disabled),
   button.primary:active:not(:disabled),

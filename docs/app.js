@@ -8,6 +8,10 @@ const FU_CHOICES = [20, 25, 30, 40, 50, 60, 70, 80, 90, 100, 110];
 
 const el = (id) => document.getElementById(id);
 
+/* マウスとキーボードで使う端末（PC）か。スマホでは自動で入力欄に移らない
+   （キーボードが開いて手牌が隠れるため）。 */
+const IS_DESKTOP = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
 /* 問題画面・回答欄の「？」で出す用語の説明。役名・符の説明は採点結果に含まれて届く。 */
 const GLOSSARY = {
   場風: 'その局の風。「東場」なら東が場風。場風の牌を3枚そろえると役（役牌）になり、雀頭にすると2符付く。',
@@ -341,9 +345,136 @@ function buildChips(container, values, onSelect) {
       chip.classList.add('selected');
       onSelect(value);
       updateSubmitState();
+      moveToNextField();
     });
     container.appendChild(chip);
   });
+}
+
+/* --- キーボード操作 ------------------------------------------------------ */
+
+/* 数字キーは「まだ選んでいない欄」に入る。翻 → 符 → 点数の順。 */
+function keyboardTarget() {
+  if (!state.problem || state.answered) return null;
+  if (state.han === null) return 'han';
+  if (state.problem.askFu && state.fu === null) return 'fu';
+  return 'points';
+}
+
+/** 数字キーが入る欄に印を付け、点数の番になったら（PC では）入力欄に移る。 */
+function moveToNextField() {
+  const target = keyboardTarget();
+  el('han-field').classList.toggle('active', target === 'han');
+  el('fu-field').classList.toggle('active', target === 'fu');
+  el('points-field').classList.toggle('active', target === 'points');
+  if (IS_DESKTOP && target === 'points' && document.activeElement !== el('points')) {
+    el('points').focus({ preventScroll: true });
+  }
+}
+
+/* 「1」は 1翻 にも 10〜13翻 にもなりうるので、続く数字を少し待つ。
+   候補が 1 つに絞れたらすぐ決める（符は「3」で 30、「2」「5」で 25）。 */
+const DIGIT_WAIT_MS = 700;
+const digitInput = { buffer: '', timer: null };
+
+function clearDigitInput() {
+  clearTimeout(digitInput.timer);
+  digitInput.buffer = '';
+  document.querySelectorAll('.chip.candidate').forEach((chip) => chip.classList.remove('candidate'));
+}
+
+function chipFor(target, value) {
+  return document.querySelector(`#${target}-chips .chip[data-value="${value}"]`);
+}
+
+function handleDigit(target, digit) {
+  const values = target === 'han' ? HAN_CHOICES : FU_CHOICES;
+  const matching = (buffer) => values.filter((value) => String(value).startsWith(buffer));
+
+  let buffer = digitInput.buffer + digit;
+  if (matching(buffer).length === 0) buffer = digit;   // 続かない数字なら打ち直しとみなす
+  const candidates = matching(buffer);
+  clearDigitInput();
+  if (candidates.length === 0) return;
+
+  if (candidates.length === 1) {
+    chipFor(target, candidates[0]).click();
+    return;
+  }
+  digitInput.buffer = buffer;
+  candidates.forEach((value) => chipFor(target, value).classList.add('candidate'));
+  digitInput.timer = setTimeout(() => {
+    const exact = Number(buffer);
+    clearDigitInput();
+    if (values.includes(exact)) chipFor(target, exact).click();
+  }, DIGIT_WAIT_MS);
+}
+
+/** Backspace: 最後に選んだもの（符 → 翻）を外す。 */
+function undoLastChoice() {
+  const target = state.problem.askFu && state.fu !== null ? 'fu' : (state.han !== null ? 'han' : null);
+  if (!target) return;
+  state[target] = null;
+  document.querySelectorAll(`#${target}-chips .chip`).forEach((chip) => chip.classList.remove('selected'));
+  updateSubmitState();
+  moveToNextField();
+}
+
+function onKeydown(event) {
+  if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
+  const key = event.key;
+  const node = event.target;
+  const inPoints = node === el('points');
+  const inOtherControl = !inPoints && node.closest && node.closest('input, select, textarea');
+  if (inOtherControl) return;
+
+  // 結果表示中: Enter / N で次の問題へ（ボタンにフォーカスがあるときの Enter はボタン側に任せる）
+  if (state.answered) {
+    const onButton = node.tagName === 'BUTTON';
+    if ((key === 'Enter' && !onButton) || key.toLowerCase() === 'n') {
+      event.preventDefault();
+      loadProblem();
+    }
+    return;
+  }
+  if (!state.problem) return;
+
+  if (key === 'Escape') {
+    closeHelp();
+    if (!el('hint').hidden) toggleHint();
+    if (inPoints) el('points').blur();
+    return;
+  }
+  if (key === 'Enter') {
+    if (node.tagName === 'BUTTON' && !inPoints) return;
+    event.preventDefault();
+    if (!el('submit').disabled) submitAnswer();
+    return;
+  }
+  if (inPoints) return;   // 点数欄の中は普通に文字入力
+
+  if (key.toLowerCase() === 'h') {
+    event.preventDefault();
+    toggleHint();
+    return;
+  }
+  if (key === 'Backspace') {
+    event.preventDefault();
+    clearDigitInput();
+    undoLastChoice();
+    return;
+  }
+  if (/^[0-9]$/.test(key)) {
+    const target = keyboardTarget();
+    event.preventDefault();
+    if (target === 'points') {
+      el('points').focus({ preventScroll: true });
+      el('points').value += key;
+      updateSubmitState();
+    } else if (target) {
+      handleDigit(target, key);
+    }
+  }
 }
 
 function updateSubmitState() {
@@ -390,7 +521,16 @@ function resetForm() {
   el('answer').hidden = false;
   el('result').hidden = true;
   el('next-wrap').hidden = true;
+
+  // 点数の書式に合うボタンだけ出す（子のツモ=「-」、親のツモ=「オール」）
+  el('insert-dash').hidden = !(problem.isTsumo && !problem.isDealer);
+  el('insert-all').hidden = !(problem.isTsumo && problem.isDealer);
+  el('insert-dash').disabled = false;
+  el('insert-all').disabled = false;
+
+  clearDigitInput();
   updateSubmitState();
+  moveToNextField();
 }
 
 function lockForm() {
@@ -401,6 +541,10 @@ function lockForm() {
   el('giveup').disabled = true;
   el('hint-open').disabled = true;
   el('hint').hidden = true;
+  el('insert-dash').disabled = true;
+  el('insert-all').disabled = true;
+  clearDigitInput();
+  moveToNextField();
 }
 
 /* --- 結果の描画 ---------------------------------------------------------- */
@@ -555,7 +699,12 @@ async function loadProblem() {
     state.problem = data;
     renderProblem(data);
     resetForm();
-    el('points').focus();
+    el('settings-note').textContent = '';
+    // 前の問題で押したボタンなどからフォーカスを外す。点数欄には自動で移らない
+    // （数字キーはまず翻に入る。スマホではキーボードが開いて手牌が隠れるのも防ぐ）
+    if (document.activeElement && document.activeElement !== document.body) {
+      document.activeElement.blur();
+    }
   } catch (error) {
     el('board').innerHTML = `<div class="loading">読み込みに失敗しました: ${error.message}</div>`;
   }
@@ -590,21 +739,35 @@ document.querySelectorAll('#answer .term').forEach((button) => {
 });
 
 el('points').addEventListener('input', updateSubmitState);
-el('points').addEventListener('keydown', (event) => {
-  if (event.key === 'Enter' && !el('submit').disabled) submitAnswer();
-});
 el('submit').addEventListener('click', submitAnswer);
 el('giveup').addEventListener('click', submitAnswer);
 el('hint-open').addEventListener('click', toggleHint);
 el('next').addEventListener('click', loadProblem);
-el('difficulty').addEventListener('change', loadProblem);
-el('preset').addEventListener('change', loadProblem);
 
-document.addEventListener('keydown', (event) => {
-  // 結果表示中は Enter / N で次の問題へ
-  if (state.answered && (event.key === 'Enter' || event.key.toLowerCase() === 'n')) {
-    loadProblem();
-  }
+// 「-」「オール」ボタン。押しても入力欄のフォーカス（＝スマホのキーボード）を外さない
+document.querySelectorAll('.insert').forEach((button) => {
+  button.addEventListener('pointerdown', (event) => event.preventDefault());
+  button.addEventListener('click', () => {
+    const input = el('points');
+    input.value += button.dataset.insert;
+    updateSubmitState();
+  });
 });
+
+// 難易度などの変更は次の問題から。答え合わせが済んでいれば、すぐ次の問題へ進む
+function onSettingsChange() {
+  if (state.answered || !state.problem) {
+    loadProblem();
+    return;
+  }
+  const label = el('preset').checked
+    ? '学習用の定義済み問題'
+    : el('difficulty').selectedOptions[0].textContent.replace(/（.*）/, '');
+  el('settings-note').textContent = `次の問題から「${label}」になります`;
+}
+el('difficulty').addEventListener('change', onSettingsChange);
+el('preset').addEventListener('change', onSettingsChange);
+
+document.addEventListener('keydown', onKeydown);
 
 loadProblem();

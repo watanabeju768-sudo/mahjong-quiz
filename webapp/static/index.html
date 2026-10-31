@@ -28,6 +28,7 @@
   <label class="check">
     <input type="checkbox" id="preset"> 学習用の定義済み問題を使う
   </label>
+  <span class="settings-note" id="settings-note" role="status"></span>
 </div>
 
 <main>
@@ -36,7 +37,7 @@
   </section>
 
   <section class="card answer" id="answer" hidden>
-    <div class="field">
+    <div class="field" id="han-field">
       <div class="field-label" data-help-anchor><button type="button" class="term label-term" data-terms="翻数" aria-expanded="false">翻数<span class="term-mark" aria-hidden="true">?</span></button> <span class="hint">（役の翻数 ＋ ドラ）</span></div>
       <div class="chips" id="han-chips"></div>
     </div>
@@ -46,10 +47,15 @@
       <div class="chips" id="fu-chips"></div>
     </div>
 
-    <div class="field">
+    <div class="field" id="points-field">
       <div class="field-label" data-help-anchor><button type="button" class="term label-term" data-terms="点数" aria-expanded="false">点数<span class="term-mark" aria-hidden="true">?</span></button> <span class="hint" id="points-hint"></span></div>
-      <input type="text" id="points" inputmode="numeric" autocomplete="off"
-             placeholder="例: 3900">
+      <div class="points-row">
+        <input type="text" id="points" inputmode="numeric" autocomplete="off"
+               placeholder="点数を入力">
+        <!-- スマホの数字キーボードには「-」が無いので、ボタンで入れられるようにする -->
+        <button type="button" class="insert" id="insert-dash" data-insert="-">-</button>
+        <button type="button" class="insert" id="insert-all" data-insert="オール">オール</button>
+      </div>
     </div>
 
     <div class="actions">
@@ -57,6 +63,11 @@
       <button id="giveup" class="ghost">わからない（答えを見る）</button>
       <button id="hint-open" class="ghost" aria-controls="hint" aria-expanded="false">ヒント（手順表・早見表）</button>
     </div>
+
+    <p class="kbd-help">
+      キーボード: 数字キーで翻 → 符を選ぶ（符は「3」で30、「2」「5」で25）／点数を入れて <kbd>Enter</kbd> で答え合わせ
+      ／<kbd>Backspace</kbd> で選び直し／<kbd>H</kbd> でヒント／答え合わせの後は <kbd>Enter</kbd> で次へ
+    </p>
   </section>
 
   <section class="card hint" id="hint" hidden></section>

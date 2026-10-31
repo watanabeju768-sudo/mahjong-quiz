@@ -408,7 +408,7 @@ def run(
     """クイズを 1 セッション実行する。"""
     style = Style(enabled=color)
     print(style.bold("\n🀄 麻雀 点数計算クイズ"))
-    print(style.dim("  ルール: 喰いタンあり / 赤ドラなし / 平和ツモ 20符 / 数え役満あり"))
+    print(style.dim("  ルール: 喰いタンなし / 赤ドラなし / 平和ツモ 20符 / 数え役満あり"))
 
     session = QuizSession(style=style, batch=batch)
     stats = session.play(problem_stream(count, difficulty, use_presets, seed))

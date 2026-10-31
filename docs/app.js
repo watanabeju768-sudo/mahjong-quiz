@@ -21,6 +21,82 @@ const STORAGE = (() => {
   }
 })();
 
+/* 麻雀用語のふりがな。画面に出た文字（説明文・ヒント・結果など）に後から付ける
+   （rubifyNode）。長い語から先に当てるので「翻数」は「翻」より優先される。
+   役名・符の名前のように、もともと読みを添えて出すものには付けない。 */
+const RUBY_TERMS = {
+  翻数: 'ハンすう', 翻: 'ハン', 符: 'フ', 副底: 'フーテイ', 門前加符: 'メンゼンカフ', 門前: 'メンゼン',
+  場風: 'バカゼ', 自風: 'ジカゼ', 連風牌: 'レンフォンパイ', 風牌: 'カゼハイ', 三元牌: 'サンゲンパイ',
+  東場: 'トンば', 南場: 'ナンば', 西場: 'シャーば', 北場: 'ペーば',
+  東家: 'トンチャ', 南家: 'ナンチャ', 西家: 'シャーチャ', 北家: 'ペーチャ',
+  東: 'トン', 南: 'ナン', 西: 'シャー', 北: 'ペー', 白: 'ハク', 發: 'ハツ',
+  萬子: 'マンズ', 筒子: 'ピンズ', 索子: 'ソーズ',
+  数牌: 'シューパイ', 字牌: 'ジハイ', 中張牌: 'チュンチャンパイ', 么九牌: 'ヤオチューハイ',
+  ドラ表示牌: 'ドラひょうじハイ', 嶺上牌: 'リンシャンハイ', 手牌: 'てハイ', 牌: 'ハイ',
+  刻子: 'コーツ', 順子: 'シュンツ', 槓子: 'カンツ', 対子: 'トイツ', 面子: 'メンツ', 雀頭: 'ジャントウ',
+  暗刻: 'アンコ', 明刻: 'ミンコ', 暗槓: 'アンカン', 明槓: 'ミンカン', 加槓: 'カカン',
+  辺張: 'ペンチャン', 嵌張: 'カンチャン', 単騎: 'タンキ', 両面: 'リャンメン',
+  放銃者: 'ホウジュウしゃ', 放銃: 'ホウジュウ', 流局: 'リュウキョク', 巡: 'ジュン', 局: 'キョク',
+  鳴: 'な', 和了: 'あが', 喰: 'く',
+  立直: 'リーチ', 一発: 'イッパツ', 役牌: 'ヤクハイ', 数え役満: 'かぞえヤクマン', 役満: 'ヤクマン',
+  三倍満: 'サンバイマン', 満貫: 'マンガン', 跳満: 'ハネマン', 倍満: 'バイマン',
+  平和形: 'ピンフがた', 平和: 'ピンフ', 断幺九: 'タンヤオ', 一盃口: 'イーペーコー', 二盃口: 'リャンペーコー',
+  七対子: 'チートイツ', 三暗刻: 'サンアンコー', 四暗刻: 'スーアンコー', 対々和: 'トイトイ',
+  混一色: 'ホンイツ', 清一色: 'チンイツ', 三色同順: 'サンショクドウジュン', 一気通貫: 'イッキツウカン',
+};
+// 一字では別の意味にもなる字は、前後を見て麻雀の牌のときだけ付ける
+//   中: 「白・發・中」「中を3枚」　萬・筒・索: 「123萬」のように数字の直後
+const RUBY_CONTEXT = [
+  ['(?<=[・→])中|中(?=[を・→])', 'チュン'],
+  ['(?<=\\d)萬', 'マン'],
+  ['(?<=\\d)筒', 'ピン'],
+  ['(?<=\\d)索', 'ソー'],
+];
+const RUBY_READING = Object.assign({}, RUBY_TERMS, { 中: 'チュン', 萬: 'マン', 筒: 'ピン', 索: 'ソー' });
+const RUBY_PATTERN = new RegExp(
+  Object.keys(RUBY_TERMS)
+    .sort((a, b) => b.length - a.length)
+    .concat(RUBY_CONTEXT.map(([pattern]) => pattern))
+    .join('|'),
+  'g',
+);
+
+/** 要素の中の文字に、麻雀用語のふりがなを付ける。牌の絵柄や既存のふりがなは触らない。 */
+function rubifyNode(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const parent = node.parentElement;
+      if (!parent || parent.closest('ruby, svg, option, select, script, style, textarea')) {
+        return NodeFilter.FILTER_REJECT;
+      }
+      RUBY_PATTERN.lastIndex = 0;
+      return RUBY_PATTERN.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+    },
+  });
+  const targets = [];
+  while (walker.nextNode()) targets.push(walker.currentNode);
+
+  targets.forEach((node) => {
+    const fragment = document.createDocumentFragment();
+    const text = node.nodeValue;
+    let last = 0;
+    RUBY_PATTERN.lastIndex = 0;
+    let match;
+    while ((match = RUBY_PATTERN.exec(text)) !== null) {
+      if (match.index > last) fragment.appendChild(document.createTextNode(text.slice(last, match.index)));
+      const ruby = document.createElement('ruby');
+      ruby.appendChild(document.createTextNode(match[0]));
+      const rt = document.createElement('rt');
+      rt.textContent = RUBY_READING[match[0]] || '';
+      ruby.appendChild(rt);
+      fragment.appendChild(ruby);
+      last = match.index + match[0].length;
+    }
+    if (last < text.length) fragment.appendChild(document.createTextNode(text.slice(last)));
+    node.parentNode.replaceChild(fragment, node);
+  });
+}
+
 /* 問題画面・回答欄の「？」で出す用語の説明。役名・符の説明は採点結果に含まれて届く。 */
 const GLOSSARY = {
   場風: 'その局の風。「東場」なら東が場風。場風の牌を3枚そろえると役（役牌）になり、雀頭にすると2符付く。',
@@ -46,6 +122,7 @@ const state = {
   han: null,
   fu: null,
   answered: false,
+  correct: null,          // 答え合わせ後の正解データ（早見表で答えのマスに印を付ける）
   hintUsed: false,
   hintTab: 'fu',          // ヒントで最後に開いたタブ（fu: 符計算の手順 / table: 点数早見表）
   tableView: null,        // 早見表で見ている { isDealer, isTsumo }（初期値は問題に合わせる）
@@ -146,6 +223,7 @@ function renderProblem(problem) {
   });
 
   board.appendChild(handRow);
+  rubifyNode(board);
 }
 
 /* --- 用語の説明（「？」） ------------------------------------------------- */
@@ -202,6 +280,7 @@ function toggleHelp(button) {
   });
   const anchor = button.closest('[data-help-anchor]') || button;
   anchor.insertAdjacentElement('afterend', help);
+  rubifyNode(help);
   button.setAttribute('aria-expanded', 'true');
 }
 
@@ -269,6 +348,15 @@ function scoreTableHtml(view) {
   html += `<p class="hint-note">${who}の${how}（${format}）。翻（横）と符（縦）が交わるマスが点数。`
     + '色の付いたマスは満貫。</p>';
 
+  // 答え合わせの後は、この問題の答えのマス（または満貫以上の行）に印を付ける
+  const answer = state.answered ? state.correct : null;
+  const answerLimit = answer ? answerLimitRow(answer) : null;
+  if (answer) {
+    const formula = answer.fu ? `${answer.han}翻 ${answer.fu}符` : `${answer.han}翻`;
+    html += `<p class="hint-answer">★ この問題の答え: ${formula}（${answer.seat}の${answer.winType}）`
+      + ` → ${answer.total.toLocaleString()}点。★のマスが答えです。</p>`;
+  }
+
   html += '<div class="table-scroll"><table class="hint-table score-table"><thead><tr><th></th>';
   [1, 2, 3, 4].forEach((han) => { html += `<th>${han}翻</th>`; });
   html += '</tr></thead><tbody>';
@@ -276,10 +364,14 @@ function scoreTableHtml(view) {
     html += `<tr><th>${fu}符</th>`;
     [1, 2, 3, 4].forEach((han) => {
       const text = tableCell(han, fu, view.isDealer, view.isTsumo);
-      const limit = fu * 2 ** (2 + han) >= 2000;
+      const classes = [];
+      if (fu * 2 ** (2 + han) >= 2000) classes.push('limit');
+      const isAnswer = answer && !answerLimit && answer.han === han && answer.fu === fu;
+      if (isAnswer) classes.push('answer');
+      const classAttr = classes.length ? ` class="${classes.join(' ')}"` : '';
       html += text === null
         ? '<td class="none">—</td>'
-        : `<td${limit ? ' class="limit"' : ''}>${text}</td>`;
+        : `<td${classAttr}>${isAnswer ? '★ ' : ''}${text}</td>`;
     });
     html += '</tr>';
   });
@@ -287,11 +379,20 @@ function scoreTableHtml(view) {
 
   html += '<table class="hint-table limit-table"><tbody>';
   LIMIT_ROWS.forEach((row) => {
-    html += `<tr><th>${row.label}<small>${row.hanText}</small></th>`
+    const isAnswer = answerLimit === row;
+    html += `<tr${isAnswer ? ' class="answer"' : ''}><th>${isAnswer ? '★ ' : ''}${row.label}<small>${row.hanText}</small></th>`
       + `<td>${tableCell(row.han, 30, view.isDealer, view.isTsumo)}</td></tr>`;
   });
   html += '</tbody></table>';
   return html;
+}
+
+/** 答えが表の 1〜4翻 の範囲外（5翻以上・役満）なら、満貫以上の表のどの行かを返す。 */
+function answerLimitRow(answer) {
+  const isYakuman = !answer.fu || answer.han >= 13;
+  if (!isYakuman && answer.han <= 4) return null;
+  if (isYakuman) return LIMIT_ROWS[LIMIT_ROWS.length - 1];
+  return LIMIT_ROWS.slice().reverse().find((row) => answer.han >= row.han) || null;
 }
 
 function renderHint() {
@@ -302,9 +403,13 @@ function renderHint() {
     html += `<button type="button" class="tab" role="tab" data-tab="${key}"`
       + ` aria-selected="${state.hintTab === key}">${label}</button>`;
   });
-  html += '</div><span class="hint-flag">この問題は「ヒントあり」になります</span></div>';
+  const flag = state.answered
+    ? '答え合わせの後なので、記録には影響しません'
+    : 'この問題は「ヒントあり」になります';
+  html += `</div><span class="hint-flag">${flag}</span></div>`;
   html += `<div class="hint-body" role="tabpanel">${state.hintTab === 'fu' ? FU_STEPS_HTML : scoreTableHtml(state.tableView)}</div>`;
   hint.innerHTML = html;
+  rubifyNode(hint);
 
   hint.querySelectorAll('.tab').forEach((tab) => {
     tab.addEventListener('click', () => {
@@ -321,8 +426,8 @@ function renderHint() {
 }
 
 function openHint() {
-  if (state.answered) return;
-  state.hintUsed = true;
+  // 答え合わせの後に見る分には「ヒントあり」にしない（間違えた理由を確かめるため）
+  if (!state.answered) state.hintUsed = true;
   if (!state.tableView) {
     state.tableView = { isDealer: state.problem.isDealer, isTsumo: state.problem.isTsumo };
   }
@@ -441,6 +546,11 @@ function onKeydown(event) {
 
   // 結果表示中: Enter / N で次の問題へ（ボタンにフォーカスがあるときの Enter はボタン側に任せる）
   if (state.answered) {
+    if (key.toLowerCase() === 'h') {
+      event.preventDefault();
+      toggleHint();
+      return;
+    }
     const onButton = node.tagName === 'BUTTON';
     if ((key === 'Enter' && !onButton) || key.toLowerCase() === 'n') {
       event.preventDefault();
@@ -501,6 +611,7 @@ function resetForm() {
   state.han = null;
   state.fu = null;
   state.answered = false;
+  state.correct = null;
   state.hintUsed = false;
   state.tableView = null;
   el('hint').hidden = true;
@@ -524,6 +635,7 @@ function resetForm() {
       ? '（「◯◯オール」または合計点）'
       : '（「子から-親から」の順、または合計点）'
     : '（放銃者からの一括払い）';
+  rubifyNode(el('points-hint'));
   el('points').placeholder = problem.isTsumo
     ? problem.isDealer ? '◯◯オール' : '子から-親から'
     : '点数を入力';
@@ -550,8 +662,8 @@ function lockForm() {
   el('points').disabled = true;
   el('submit').disabled = true;
   el('giveup').disabled = true;
-  el('hint-open').disabled = true;
   el('hint').hidden = true;
+  el('hint-open').setAttribute('aria-expanded', 'false');
   el('insert-dash').disabled = true;
   el('insert-all').disabled = true;
   clearDigitInput();
@@ -595,6 +707,7 @@ function judgeRow(name, ok, yours, truth) {
 
 function renderResult(data) {
   const correct = data.correct;
+  state.correct = correct;
   const perfect = data.hanOk && data.fuOk && data.pointsOk;
   const hintUsed = state.hintUsed;
   const result = el('result');
@@ -685,6 +798,7 @@ function renderResult(data) {
   if (correct.levelDescription) {
     html += `<div class="detail">${correct.level}: ${correct.levelDescription}</div>`;
   }
+  html += '<button type="button" class="ghost small" id="open-table">点数早見表で確かめる</button>';
   html += '</div>';
 
   if (correct.note) {
@@ -692,6 +806,16 @@ function renderResult(data) {
   }
 
   result.innerHTML = html;
+  rubifyNode(result);
+  el('open-table').addEventListener('click', () => {
+    state.hintTab = 'table';
+    if (el('hint').hidden) {
+      openHint();
+    } else {
+      renderHint();
+      el('hint').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  });
   result.hidden = false;
   el('next-wrap').hidden = false;
   result.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -848,6 +972,7 @@ el('review').addEventListener('change', onSettingsChange);
 el('reset-progress').addEventListener('click', resetProgress);
 
 if (!QuizApi.supportsReview) el('review-option').hidden = true;
+document.querySelectorAll('[data-ruby]').forEach(rubifyNode);
 renderStats();
 
 document.addEventListener('keydown', onKeydown);

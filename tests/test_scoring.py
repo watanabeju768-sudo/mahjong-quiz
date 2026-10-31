@@ -18,9 +18,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from mahjong.constants import EAST, SOUTH  # noqa: E402
 
 from mahjong_quiz.presets import load_presets  # noqa: E402
-from mahjong_quiz.problem import generate_problem, make_problem  # noqa: E402
+from mahjong.meld import Meld  # noqa: E402
+
+from mahjong_quiz.problem import generate_problem, make_meld, make_problem  # noqa: E402
 from mahjong_quiz.quiz import check_points, parse_points  # noqa: E402
-from mahjong_quiz.scoring import Score, calculate  # noqa: E402
+from mahjong_quiz.scoring import Score, calculate, try_calculate  # noqa: E402
 from mahjong_quiz.tiles import count_dora, format_tiles, next_dora_34  # noqa: E402
 
 
@@ -180,6 +182,29 @@ class TestScoring(unittest.TestCase):
             line.tiles for line in score.fu_details if line.reason == "么九牌の暗刻"
         )
         self.assertEqual(terminal_pons, [(0, 0, 0), (17, 17, 17)])  # 1萬・9筒
+
+    def test_open_tanyao_is_not_a_yaku(self):
+        """喰いタンなし: 鳴いた手の断幺九だけでは和了れず、門前なら役になる。"""
+        open_hand = make_problem(
+            man="234",
+            pin="345678",
+            sou="23455",
+            win_tile="sou:4",
+            melds=[make_meld(Meld.CHI, man="234")],
+            player_wind=SOUTH,
+            round_wind=EAST,
+        )
+        self.assertIsNone(try_calculate(open_hand))
+
+        closed_hand = make_problem(
+            man="234",
+            pin="345678",
+            sou="23455",
+            win_tile="sou:4",
+            player_wind=SOUTH,
+            round_wind=EAST,
+        )
+        self.assertIn("断幺九", [line.name for line in calculate(closed_hand).yaku])
 
     def test_all_presets_are_scorable(self):
         for problem in load_presets():

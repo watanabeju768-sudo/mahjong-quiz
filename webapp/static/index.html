@@ -35,7 +35,7 @@
   <span class="settings-note" id="settings-note" role="status"></span>
 </div>
 
-<div class="rates" id="rates">
+<div class="rates" id="rates" data-ruby>
   <span class="rates-title" title="ヒントを使った問題は正解率に含めません">正解率</span>
   <span>翻 <b id="rate-han">—</b></span>
   <span>符 <b id="rate-fu">—</b></span>
@@ -43,7 +43,7 @@
   <button type="button" class="link" id="reset-progress">成績をリセット</button>
 </div>
 
-<main>
+<main data-ruby>
   <section class="card board" id="board">
     <div class="loading">読み込み中…</div>
   </section>
@@ -91,8 +91,8 @@
   </div>
 </main>
 
-<footer>
-  ルール: 喰いタンあり / 赤ドラなし / 平和ツモ 20符 / 喰い平和形 30符 / 数え役満あり<br>
+<footer data-ruby>
+  ルール: 喰いタンなし / 赤ドラなし / 平和ツモ 20符 / 喰い平和形 30符 / 数え役満あり<br>
   役判定と点数計算は
   <a href="https://github.com/MahjongRepository/mahjong" target="_blank" rel="noopener noreferrer">mahjong</a>
   ライブラリ（MIT License）による計算結果です。

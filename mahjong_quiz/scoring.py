@@ -31,12 +31,12 @@ from .naming import (
 from .tiles import count_dora
 
 # アプリ全体で使う標準ルール設定。
-#   has_open_tanyao   : 喰いタンあり
+#   has_open_tanyao   : 喰いタンなし（鳴いた手の断幺九は役にならない）
 #   has_aka_dora      : 赤ドラなし（フェーズ1では未対応）
 #   fu_for_pinfu_tsumo: 平和ツモは 20 符（ツモの 2 符を加えない）
 #   fu_for_open_pinfu : 喰い平和形は 30 符
 DEFAULT_RULES = OptionalRules(
-    has_open_tanyao=True,
+    has_open_tanyao=False,
     has_aka_dora=False,
     fu_for_pinfu_tsumo=False,
     fu_for_open_pinfu=True,

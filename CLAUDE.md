@@ -34,7 +34,11 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 - Python 3.9（macOS のシステム Python）。**3.9 で動く構文を保つこと**
   — `list[int]` などの組み込みジェネリクスは実行時に評価させない
   （各モジュール冒頭の `from __future__ import annotations` が前提）。
-- 依存は `mahjong` 1.4.0 のみ。追加する場合は `requirements.txt` に明記する。
+- 依存は `mahjong` 1.4.0 のみ（`requirements.txt` で `==1.4.0` に固定）。
+  2.x は役名の英語表記が変わり（例: `Yakuhai (seat wind east)`）、`naming.py` の
+  対応表から外れて英語のまま表示されるため、上げるときは対応表ごと見直す。
+  追加の依存は `requirements.txt` に明記する。
+- Windows では仮想環境の Python は `.venv/Scripts/python`（macOS は `.venv/bin/python`）。
 
 ## ディレクトリ構成
 
@@ -80,6 +84,14 @@ tests/points_cases.json  Python と JS の共通テストケース
   読みを添えて表示するので、**名前に説明の括弧書きを入れない**
   （「副底（基本符）（フーテイ）」のように括弧が重なるため）。
   表示は CUI が「平和（ピンフ）」、ブラウザ版が ruby タグのふりがな。
+- **役名・符の理由には初心者向けの説明も付ける。** `YAKU_JA` / `FU_REASON_JA`
+  に足したら `YAKU_DESCRIPTION` / `FU_REASON_DESCRIPTION` にもひとこと説明を足す
+  （付け忘れは `test_every_japanese_name_has_a_description` が検出）。
+  副底は符の値（20/25/30）で意味が変わるので `FU_BASE_DESCRIPTION` で引き分ける。
+  問題画面の「？」で出す用語（場風・ドラ表示牌・ポンなど）は `app.js` の `GLOSSARY`。
+- **符の内訳の「どの牌か」は対応付けるだけで、符は計算し直さない。**
+  `scoring._fu_source_tiles()` がライブラリ自身の手牌分解と符計算を呼び直し、
+  応答とまったく同じ内訳になる分解から牌を拾う。見つからなければ牌の表示を省く。
 - **ランダム生成は「作って検証する」方式。** `problem.py` の
   `generate_problem()` は適当な和了形を組んでから採点し、役なしなら捨てて
   作り直す。ここで手役の成立条件を推論しないこと。

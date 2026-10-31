@@ -213,6 +213,56 @@ button { touch-action: manipulation; }
 .meld-group { display: flex; align-items: flex-end; gap: 8px; margin-top: 8px; }
 .meld-label { font-size: .75rem; opacity: .8; padding-bottom: 16px; }
 
+/* --- 用語の説明（押すと開く「？」） ---------------------------------------- */
+
+button.term {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: transform 100ms ease-out, opacity 120ms ease-out;
+}
+button.term:active { transform: scale(.96); }
+button.term:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+button.label-term,
+button.meld-label { background: none; border: none; padding: 0; letter-spacing: inherit; }
+button.meld-label { padding-bottom: 16px; }
+.field-label button.label-term { font-weight: 600; }
+
+.term-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--fill-strong);
+  color: var(--text-dim);
+}
+.board .term-mark { background: rgba(255, 255, 255, .22); color: #fff; }
+.badge.strong .term-mark { background: rgba(43, 34, 0, .16); color: #2b2200; }
+button.term[aria-expanded="true"] .term-mark { background: var(--accent); color: var(--accent-text); }
+.board button.term[aria-expanded="true"] .term-mark { background: var(--gold); color: #2b2200; }
+
+.term-help {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--fill);
+  font-size: .8125rem;
+  line-height: 1.7;
+}
+.term-help p { margin: 0; }
+.term-help p + p { margin-top: 6px; }
+.term-help b { margin-right: 8px; }
+.board .term-help { background: rgba(0, 0, 0, .28); color: #f1f7f3; }
+.meld-group + .term-help,
+.row-label + .term-help { margin-top: 2px; }
+
 /* --- 牌 ------------------------------------------------------------------ */
 
 /* 牌は「象牙色の下地（CSS）＋ 絵柄（tileface.js の SVG）」の二層構造。
@@ -240,6 +290,7 @@ button { touch-action: manipulation; }
 .tile svg { display: block; width: 100%; height: 100%; }
 
 .tile.small { width: 34px; height: 47px; border-radius: 5px; padding: 1px; }
+.tile.mini { width: 26px; height: 36px; border-radius: 4px; padding: 1px; }
 
 .tile.win {
   box-shadow:
@@ -388,31 +439,28 @@ rt {
   text-align: center;
 }
 
-.yaku-list { display: flex; flex-wrap: wrap; gap: 10px 8px; }
-.yaku-item {
-  background: var(--fill);
-  border: 1px solid transparent;
-  border-radius: 999px;
-  padding: 5px 14px 4px;
-  font-size: .875rem;
-  line-height: 1.5;
-}
-.yaku-item b { color: var(--accent); margin-left: 6px; font-weight: 700; }
-.yaku-item.dora { background: transparent; border: 1px dashed var(--separator); }
-
-table.fu {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: .875rem;
-  font-variant-numeric: tabular-nums;
+/* 役・符の一覧。名前と値の行の下に、ひとこと説明と該当する牌を並べる */
+.explain-list {
+  display: grid;
   border-radius: 14px;
   overflow: hidden;
   background: var(--fill);
+  font-size: .875rem;
 }
-table.fu td { padding: 10px 16px; line-height: 1.6; }
-table.fu tr + tr td { box-shadow: inset 0 1px 0 var(--separator); }
-table.fu td.num { text-align: right; width: 6em; }
-table.fu tr.total td { font-weight: 700; }
+.explain-row { padding: 10px 16px; }
+.explain-row + .explain-row { box-shadow: inset 0 1px 0 var(--separator); }
+.explain-head { display: flex; align-items: baseline; gap: 12px; line-height: 1.6; }
+.explain-head .num {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.explain-row.total .explain-head { font-weight: 700; }
+.explain-row.total .num { color: var(--text); }
+.explain-desc { color: var(--text-dim); font-size: .8125rem; line-height: 1.6; margin-top: 2px; }
+.explain-tiles { margin-top: 6px; }
 
 .points-box {
   text-align: center;
@@ -469,6 +517,7 @@ footer code { background: var(--fill); padding: 1px 6px; border-radius: 4px; }
 @media (max-width: 520px) {
   .tile { width: 34px; height: 47px; }
   .tile.small { width: 26px; height: 36px; }
+  .tile.mini { width: 22px; height: 30px; }
   .topbar h1 { font-size: 1.25rem; }
   .card { padding: 16px; border-radius: 18px; }
 }
@@ -476,7 +525,8 @@ footer code { background: var(--fill); padding: 1px 6px; border-radius: 4px; }
 /* --- 動き・透明度・コントラストの設定に従う ------------------------------ */
 
 @media (prefers-reduced-motion: reduce) {
-  .chip, button.primary, button.ghost, input[type="text"] { transition: none; }
+  .chip, button.primary, button.ghost, input[type="text"], button.term { transition: none; }
+  button.term:active { transform: none; opacity: .7; }
   .chip:active:not(:disabled),
   button.primary:active:not(:disabled),
   button.ghost:active { transform: none; opacity: .7; }

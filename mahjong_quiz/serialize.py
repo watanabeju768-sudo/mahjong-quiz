@@ -48,7 +48,13 @@ def problem_to_dict(problem: Problem, problem_id: str, ask_fu: bool) -> Dict[str
 def score_to_dict(score: Score, problem: Problem) -> Dict[str, Any]:
     """答え合わせ用の正解データを dict にする。"""
     fu_details: List[Dict[str, Any]] = [
-        {"reason": line.reason, "reading": line.reading, "fu": line.fu}
+        {
+            "reason": line.reason,
+            "reading": line.reading,
+            "fu": line.fu,
+            "description": line.description,
+            "tiles": list(line.tiles),
+        }
         for line in score.fu_details
     ]
     return {
@@ -57,7 +63,12 @@ def score_to_dict(score: Score, problem: Problem) -> Dict[str, Any]:
         "fuRaw": sum(detail["fu"] for detail in fu_details),
         "fuDetails": fu_details,
         "yaku": [
-            {"name": line.name, "reading": line.reading, "han": line.han}
+            {
+                "name": line.name,
+                "reading": line.reading,
+                "han": line.han,
+                "description": line.description,
+            }
             for line in score.yaku
         ],
         "dora": score.dora,
@@ -70,6 +81,7 @@ def score_to_dict(score: Score, problem: Problem) -> Dict[str, Any]:
         "payment": score.payment_text(),
         "level": score.level_text(),
         "levelReading": score.level_reading(),
+        "levelDescription": score.level_description(),
         "seat": problem.seat_text(),
         "winType": problem.win_type_text(),
         "note": problem.note,

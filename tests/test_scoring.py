@@ -109,7 +109,8 @@ class TestScoring(unittest.TestCase):
         self.assertEqual(score.fu, 60)
         self.assertEqual(score.total, 5800)
         self.assertIn(
-            ("連風牌の雀頭", "レンフォンパイのジャントウ", 4), score.fu_details
+            ("連風牌の雀頭", "レンフォンパイのジャントウ", 4),
+            [(line.reason, line.reading, line.fu) for line in score.fu_details],
         )
 
     def test_dora_is_not_listed_as_yaku(self):
@@ -141,6 +142,44 @@ class TestScoring(unittest.TestCase):
             with self.subTest(label=label):
                 missing = sorted(set(names.values()) - set(readings))
                 self.assertEqual(missing, [], f"{label}に読みがありません: {missing}")
+
+    def test_every_japanese_name_has_a_description(self):
+        """役名・符の理由に、初心者向けのひとこと説明の付け忘れがないこと。"""
+        from mahjong_quiz import naming
+
+        pairs = [
+            ("役名", naming.YAKU_JA, naming.YAKU_DESCRIPTION),
+            ("符の理由", naming.FU_REASON_JA, naming.FU_REASON_DESCRIPTION),
+        ]
+        for label, names, descriptions in pairs:
+            with self.subTest(label=label):
+                missing = sorted(set(names.values()) - set(descriptions))
+                self.assertEqual(missing, [], f"{label}に説明がありません: {missing}")
+
+    def test_fu_lines_point_to_their_tiles(self):
+        """符の内訳の各行に、元になった牌（刻子・雀頭）が対応付けられること。"""
+        from mahjong_quiz import naming
+
+        problem = make_problem(
+            man="111",
+            pin="999",
+            sou="555234",
+            honors="11",
+            win_tile="sou:2",
+            player_wind=EAST,
+            round_wind=EAST,
+        )
+        score = calculate(problem)
+        lines = {line.reason: line for line in score.fu_details}
+        self.assertEqual(lines["連風牌の雀頭"].tiles, (27, 27))  # 東東
+        self.assertEqual(lines["中張牌の暗刻"].tiles, (22, 22, 22))  # 5索
+        self.assertEqual(lines["副底"].tiles, ())
+        # 門前ロンの副底は 30 符として返るので、門前加符の説明になる
+        self.assertEqual(lines["副底"].description, naming.FU_BASE_DESCRIPTION[30])
+        terminal_pons = sorted(
+            line.tiles for line in score.fu_details if line.reason == "么九牌の暗刻"
+        )
+        self.assertEqual(terminal_pons, [(0, 0, 0), (17, 17, 17)])  # 1萬・9筒
 
     def test_all_presets_are_scorable(self):
         for problem in load_presets():

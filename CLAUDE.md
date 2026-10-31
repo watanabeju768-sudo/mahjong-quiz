@@ -25,7 +25,8 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 | `.venv/bin/python build_static.py` | **公開用の静的サイトを docs/ に生成** |
 | `.venv/bin/python -m http.server -d docs 8000` | 生成した静的サイトの確認 |
 | `.venv/bin/python -m unittest discover -s tests` | テスト実行（Python） |
-| `node tests/test_points.mjs` | テスト実行（JS の回答判定） |
+| `node tests/test_points.mjs` | テスト実行（JS の回答判定・点数早見表） |
+| `node tests/test_progress.mjs` | テスト実行（成績・復習リストの記録） |
 
 回答中は `q` で終了、空行で降参（答えと解説を表示）。
 
@@ -60,12 +61,14 @@ webapp/
   static/app.js          出題の描画・入力・結果表示
   static/api-server.js   出題・採点をサーバーに問い合わせる実装
   static/api-static.js   出題・採点をブラウザだけで完結させる実装（静的版）
-  static/quiz-core.js    回答の解析・正誤判定（quiz.py の移植、静的版で使う）
+  static/quiz-core.js    回答の解析・正誤判定（quiz.py の移植、静的版で使う）・点数早見表
+  static/progress.js     成績と復習リストの記録・ブラウザ（localStorage）への保存
   static/tiles.html      牌 34 種を並べた開発用ページ（/tiles.html）
 build_static.py          公開用の静的サイトを docs/ に書き出す
 docs/                    ← 生成物。GitHub Pages がここを公開する（コミットする）
 tests/test_scoring.py    unittest（pytest 不要）
-tests/test_points.mjs    JS の回答判定のテスト（node で実行）
+tests/test_points.mjs    JS の回答判定・点数早見表のテスト（node で実行）
+tests/test_progress.mjs  成績・復習リストの記録のテスト（node で実行）
 tests/points_cases.json  Python と JS の共通テストケース
 tests/score_table_cases.json  ヒントの点数早見表の照合データ（ライブラリの計算結果）
 ```
@@ -101,6 +104,12 @@ tests/score_table_cases.json  ヒントの点数早見表の照合データ（�
   「1」のように続きがありうる数字は `DIGIT_WAIT_MS` だけ待ち、候補が 1 つになれば即決する。
   スマホ（`IS_DESKTOP` が偽）では点数欄へ自動でフォーカスしない（キーボードで手牌が隠れるため）。
 - 難易度などの設定変更は次の問題から反映する（答え合わせ済みなら即座に次へ）。
+- **成績と復習リストはブラウザの localStorage に保存する（`progress.js`）。**
+  キーは `mahjong-quiz:progress:v1`。保存形式を変えるときはキーの版を上げる。
+  1 つでも間違えた問題・ヒントを使った問題を復習リストに入れ、ヒントなしで全問正解したら外す。
+  復習リストは問題 ID と答え（翻・符・点数）で持ち、`api-static.js` の `problemById` が
+  答えの食い違う問題（問題データを作り直して ID の中身が変わったもの）を弾く。
+  サーバー版は問題をメモリに一時保存するだけなので復習モードを出さない（`supportsReview`）。
 - **符の内訳の「どの牌か」は対応付けるだけで、符は計算し直さない。**
   `scoring._fu_source_tiles()` がライブラリ自身の手牌分解と符計算を呼び直し、
   応答とまったく同じ内訳になる分解から牌を拾う。見つからなければ牌の表示を省く。

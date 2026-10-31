@@ -14,6 +14,7 @@
     <span><b id="stat-total">0</b> 問</span>
     <span>全問正解 <b id="stat-perfect">0</b></span>
     <span>連続 <b id="stat-streak">0</b></span>
+    <span>復習待ち <b id="stat-review">0</b></span>
   </div>
 </header>
 
@@ -28,7 +29,18 @@
   <label class="check">
     <input type="checkbox" id="preset"> 学習用の定義済み問題を使う
   </label>
+  <label class="check" id="review-option">
+    <input type="checkbox" id="review"> 間違えた問題の復習（<span id="review-count">0</span>問）
+  </label>
   <span class="settings-note" id="settings-note" role="status"></span>
+</div>
+
+<div class="rates" id="rates">
+  <span class="rates-title" title="ヒントを使った問題は正解率に含めません">正解率</span>
+  <span>翻 <b id="rate-han">—</b></span>
+  <span>符 <b id="rate-fu">—</b></span>
+  <span>点数 <b id="rate-points">—</b></span>
+  <button type="button" class="link" id="reset-progress">成績をリセット</button>
 </div>
 
 <main>
@@ -90,6 +102,7 @@
      この行を api-static.js に差し替える。 -->
 <script src="api-server.js"></script>
 <script src="quiz-core.js"></script>
+<script src="progress.js"></script>
 <script src="tileface.js"></script>
 <script src="app.js"></script>
 </body>

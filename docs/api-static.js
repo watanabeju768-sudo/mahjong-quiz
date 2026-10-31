@@ -34,6 +34,27 @@ function shuffle(items) {
 }
 
 const QuizApi = {
+  supportsReview: true,
+
+  /**
+   * 復習用に、問題 ID から 1 問取り出す。expected（翻・符・点数）が答えと
+   * 食い違えば、問題データが作り直されて別の問題になったとみなして null を返す。
+   */
+  async problemById(id, expected) {
+    const pool = await loadPool();
+    for (const entries of Object.values(pool)) {
+      const entry = entries.find((item) => item.q.id === id);
+      if (!entry) continue;
+      if (expected && (entry.a.han !== expected.han || entry.a.fu !== expected.fu
+        || entry.a.total !== expected.total)) {
+        return null;
+      }
+      answers[id] = entry;
+      return entry.q;
+    }
+    return null;
+  },
+
   async nextProblem({ difficulty, preset }) {
     const pool = await loadPool();
     const key = preset ? 'presets' : difficulty;

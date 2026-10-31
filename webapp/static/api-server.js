@@ -6,6 +6,14 @@
 'use strict';
 
 const QuizApi = {
+  /* サーバー版は問題をメモリに一時保存するだけなので、復習モードは使えない
+     （公開版＝静的サイトでは使える）。 */
+  supportsReview: false,
+
+  async problemById() {
+    return null;
+  },
+
   /** 出題データを 1 問取得する。 */
   async nextProblem({ difficulty, preset }) {
     const params = new URLSearchParams({

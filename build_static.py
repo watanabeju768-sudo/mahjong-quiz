@@ -37,11 +37,13 @@ STATIC_DIR = os.path.join(ROOT, "webapp", "static")
 OUTPUT_DIR = os.path.join(ROOT, "docs")
 
 # 静的サイトに含める画面ファイル（api-server.js は差し替えるので含めない）
-COPY_FILES = ["index.html", "style.css", "app.js", "quiz-core.js", "tileface.js", "tiles.html"]
+COPY_FILES = [
+    "index.html", "style.css", "app.js", "quiz-core.js", "progress.js", "tileface.js", "tiles.html",
+]
 
 # index.html から読み込むファイル。更新後に古いキャッシュを使われないよう、
 # 中身のハッシュを ?v= に付けて URL を変える
-VERSIONED_ASSETS = ["style.css", "api-static.js", "quiz-core.js", "tileface.js", "app.js"]
+VERSIONED_ASSETS = ["style.css", "api-static.js", "quiz-core.js", "progress.js", "tileface.js", "app.js"]
 
 # 難易度ごとの出題数の配分
 DIFFICULTY_RATIO = {"easy": 0.3, "normal": 0.45, "hard": 0.25}

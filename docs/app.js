@@ -12,6 +12,15 @@ const el = (id) => document.getElementById(id);
    （キーボードが開いて手牌が隠れるため）。 */
 const IS_DESKTOP = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
+/* 成績の保存先。使えない環境（プライベートブラウズなど）では null（保存しないだけ）。 */
+const STORAGE = (() => {
+  try {
+    return window.localStorage;
+  } catch (error) {
+    return null;
+  }
+})();
+
 /* 問題画面・回答欄の「？」で出す用語の説明。役名・符の説明は採点結果に含まれて届く。 */
 const GLOSSARY = {
   場風: 'その局の風。「東場」なら東が場風。場風の牌を3枚そろえると役（役牌）になり、雀頭にすると2符付く。',
@@ -40,7 +49,8 @@ const state = {
   hintUsed: false,
   hintTab: 'fu',          // ヒントで最後に開いたタブ（fu: 符計算の手順 / table: 点数早見表）
   tableView: null,        // 早見表で見ている { isDealer, isTsumo }（初期値は問題に合わせる）
-  stats: { total: 0, perfect: 0, streak: 0 },
+  isReview: false,        // いまの問題が復習モードからの出題か
+  progress: loadProgress(STORAGE),   // 成績と復習リスト（progress.js）
 };
 
 /* --- 牌の描画 ------------------------------------------------------------ */
@@ -71,10 +81,11 @@ function renderProblem(problem) {
   const board = el('board');
   board.innerHTML = '';
 
-  if (problem.title) {
+  const titleText = [state.isReview ? '復習' : '', problem.title].filter(Boolean).join('：');
+  if (titleText) {
     const title = document.createElement('div');
     title.className = 'title';
-    title.textContent = problem.title;
+    title.textContent = titleText;
     board.appendChild(title);
   }
 
@@ -596,8 +607,27 @@ function renderResult(data) {
     html += '惜しい！ 内訳を確認しましょう';
   }
   html += '</div>';
-  if (hintUsed) {
-    html += '<div class="hint-used">ヒントあり（全問正解・連続の記録には数えません）</div>';
+  const outcome = recordResult(state.progress, {
+    id: state.problem.id,
+    hanOk: data.hanOk,
+    fuOk: data.fuOk,
+    pointsOk: data.pointsOk,
+    askFu: data.askFu,
+    hintUsed: hintUsed,
+    correct: correct,
+  });
+  saveProgress(state.progress, STORAGE);
+  renderStats();
+
+  const notes = [];
+  if (hintUsed) notes.push('ヒントあり（全問正解・連続・正解率には数えません）');
+  if (outcome.inReview) {
+    notes.push(`復習リストに入れました（復習待ち ${state.progress.review.length}問）`);
+  } else if (outcome.wasInReview) {
+    notes.push(`復習リストから外しました（復習待ち ${state.progress.review.length}問）`);
+  }
+  if (notes.length > 0) {
+    html += `<div class="hint-used">${notes.join('<br>')}</div>`;
   }
 
   html += '<div class="judge-list">';
@@ -666,24 +696,58 @@ function renderResult(data) {
   el('next-wrap').hidden = false;
   result.scrollIntoView({ behavior: 'smooth', block: 'start' });
   el('next').focus({ preventScroll: true });
+}
 
-  // ヒントを使った正解は「全問正解」「連続」に数えない（連続は途切れさせもしない）
-  state.stats.total += 1;
-  if (perfect && !hintUsed) {
-    state.stats.perfect += 1;
-    state.stats.streak += 1;
-  } else if (!perfect) {
-    state.stats.streak = 0;
-  }
-  el('stat-total').textContent = state.stats.total;
-  el('stat-perfect').textContent = state.stats.perfect;
-  el('stat-streak').textContent = state.stats.streak;
+/* --- 成績の表示 ---------------------------------------------------------- */
+
+function renderStats() {
+  const progress = state.progress;
+  el('stat-total').textContent = progress.total;
+  el('stat-perfect').textContent = progress.perfect;
+  el('stat-streak').textContent = progress.streak;
+  el('stat-review').textContent = progress.review.length;
+  el('review-count').textContent = progress.review.length;
+
+  [['rate-han', progress.han], ['rate-fu', progress.fu], ['rate-points', progress.points]]
+    .forEach(([id, counter]) => {
+      const rate = accuracy(counter);
+      el(id).textContent = rate === null ? '—' : `${rate}%`;
+      el(id).title = `${counter.ok} / ${counter.n} 問`;
+    });
+
+  // 復習待ちが無いときは復習モードを選べない
+  const review = el('review');
+  review.disabled = progress.review.length === 0 && !review.checked;
+}
+
+function resetProgress() {
+  const ok = window.confirm('成績と復習リストをすべて消します。よろしいですか？');
+  if (!ok) return;
+  state.progress = clearProgress(STORAGE);
+  el('review').checked = false;
+  renderStats();
 }
 
 /* --- 通信 ---------------------------------------------------------------- */
 
 /* 出題と採点の取得方法は QuizApi が握る。
    サーバー版は api-server.js、静的サイト版は api-static.js が定義する。 */
+
+/** 復習リストから 1 問選ぶ（直前の問題はなるべく避ける）。取り出せない問題はリストから外す。 */
+async function nextReviewProblem() {
+  while (state.progress.review.length > 0) {
+    const items = state.progress.review;
+    const choices = items.length > 1 && state.problem
+      ? items.filter((item) => item.id !== state.problem.id)
+      : items;
+    const item = choices[Math.floor(Math.random() * choices.length)];
+    const problem = await QuizApi.problemById(item.id, item);
+    if (problem) return problem;
+    dropReviewItem(state.progress, item.id);
+    saveProgress(state.progress, STORAGE);
+  }
+  return null;
+}
 
 async function loadProblem() {
   el('answer').hidden = true;
@@ -692,14 +756,27 @@ async function loadProblem() {
   el('board').innerHTML = '<div class="loading">読み込み中…</div>';
 
   try {
-    const data = await QuizApi.nextProblem({
-      difficulty: el('difficulty').value,
-      preset: el('preset').checked,
-    });
+    let note = '';
+    let data = null;
+    if (el('review').checked) {
+      data = await nextReviewProblem();
+      if (!data) {
+        el('review').checked = false;
+        note = '復習待ちの問題がなくなったので、通常の出題に戻りました';
+      }
+    }
+    state.isReview = data !== null;
+    if (!data) {
+      data = await QuizApi.nextProblem({
+        difficulty: el('difficulty').value,
+        preset: el('preset').checked,
+      });
+    }
     state.problem = data;
     renderProblem(data);
     resetForm();
-    el('settings-note').textContent = '';
+    renderStats();
+    el('settings-note').textContent = note;
     // 前の問題で押したボタンなどからフォーカスを外す。点数欄には自動で移らない
     // （数字キーはまず翻に入る。スマホではキーボードが開いて手牌が隠れるのも防ぐ）
     if (document.activeElement && document.activeElement !== document.body) {
@@ -760,13 +837,18 @@ function onSettingsChange() {
     loadProblem();
     return;
   }
-  const label = el('preset').checked
-    ? '学習用の定義済み問題'
-    : el('difficulty').selectedOptions[0].textContent.replace(/（.*）/, '');
+  let label = el('difficulty').selectedOptions[0].textContent.replace(/（.*）/, '');
+  if (el('preset').checked) label = '学習用の定義済み問題';
+  if (el('review').checked) label = '間違えた問題の復習';
   el('settings-note').textContent = `次の問題から「${label}」になります`;
 }
 el('difficulty').addEventListener('change', onSettingsChange);
 el('preset').addEventListener('change', onSettingsChange);
+el('review').addEventListener('change', onSettingsChange);
+el('reset-progress').addEventListener('click', resetProgress);
+
+if (!QuizApi.supportsReview) el('review-option').hidden = true;
+renderStats();
 
 document.addEventListener('keydown', onKeydown);
 

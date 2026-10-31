@@ -17,6 +17,7 @@ GitHub Pages で公開するための生成物を作る。やっていること�
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import random
@@ -37,6 +38,10 @@ OUTPUT_DIR = os.path.join(ROOT, "docs")
 
 # 静的サイトに含める画面ファイル（api-server.js は差し替えるので含めない）
 COPY_FILES = ["index.html", "style.css", "app.js", "quiz-core.js", "tileface.js", "tiles.html"]
+
+# index.html から読み込むファイル。更新後に古いキャッシュを使われないよう、
+# 中身のハッシュを ?v= に付けて URL を変える
+VERSIONED_ASSETS = ["style.css", "api-static.js", "quiz-core.js", "tileface.js", "app.js"]
 
 # 難易度ごとの出題数の配分
 DIFFICULTY_RATIO = {"easy": 0.3, "normal": 0.45, "hard": 0.25}
@@ -94,8 +99,34 @@ def copy_frontend() -> None:
         )
     html = html.replace(marker, '<script src="api-static.js"></script>')
 
+    # 問題データの URL にも版を付ける（api-static.js の中を書き換えてから、そのハッシュを取る）
+    api_path = os.path.join(OUTPUT_DIR, "api-static.js")
+    with open(api_path, encoding="utf-8") as handle:
+        api = handle.read()
+    data_url = "'data/problems.json'"
+    if data_url not in api:
+        raise SystemExit(f"api-static.js に {data_url} が見つかりません。")
+    data_version = _file_version(os.path.join(OUTPUT_DIR, "data", "problems.json"))
+    api = api.replace(data_url, f"'data/problems.json?v={data_version}'")
+    with open(api_path, "w", encoding="utf-8") as handle:
+        handle.write(api)
+
+    for name in VERSIONED_ASSETS:
+        version = _file_version(os.path.join(OUTPUT_DIR, name))
+        attribute = "href" if name.endswith(".css") else "src"
+        reference = f'{attribute}="{name}"'
+        if reference not in html:
+            raise SystemExit(f"index.html に {reference} が見つかりません。")
+        html = html.replace(reference, f'{attribute}="{name}?v={version}"')
+
     with open(index_path, "w", encoding="utf-8") as handle:
         handle.write(html)
+
+
+def _file_version(path: str) -> str:
+    """キャッシュ避けに URL へ付ける短いハッシュ。"""
+    with open(path, "rb") as handle:
+        return hashlib.sha1(handle.read()).hexdigest()[:8]
 
 
 def main(argv=None) -> int:

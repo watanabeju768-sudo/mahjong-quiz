@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>麻雀 点数計算クイズ</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=3930d8ca">
 </head>
 <body>
 
@@ -55,8 +55,11 @@
     <div class="actions">
       <button id="submit" class="primary" disabled>答え合わせ</button>
       <button id="giveup" class="ghost">わからない（答えを見る）</button>
+      <button id="hint-open" class="ghost" aria-controls="hint" aria-expanded="false">ヒント（手順表・早見表）</button>
     </div>
   </section>
+
+  <section class="card hint" id="hint" hidden></section>
 
   <section class="card result" id="result" hidden></section>
 
@@ -74,9 +77,9 @@
 
 <!-- 出題・採点の取得方法。静的サイト版では build_static.py が
      この行を api-static.js に差し替える。 -->
-<script src="api-static.js"></script>
-<script src="quiz-core.js"></script>
-<script src="tileface.js"></script>
-<script src="app.js"></script>
+<script src="api-static.js?v=6b6010ad"></script>
+<script src="quiz-core.js?v=293c78fc"></script>
+<script src="tileface.js?v=273529df"></script>
+<script src="app.js?v=ddf81c8c"></script>
 </body>
 </html>

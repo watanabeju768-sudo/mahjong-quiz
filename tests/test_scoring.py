@@ -315,5 +315,35 @@ class TestAnswerParsing(unittest.TestCase):
         self.assertFalse(check_points({"each": 3900}, score))
 
 
+class TestSharedScoreTable(unittest.TestCase):
+    """ヒントの点数早見表（quiz-core.js の scoreFor）の照合用データが、
+    mahjong ライブラリの計算結果と一致すること。JS 側は node tests/test_points.mjs で照合する。
+    """
+
+    def test_cases_match_library(self):
+        from mahjong.hand_calculating.hand_config import HandConfig
+        from mahjong.hand_calculating.scores import ScoresCalculator
+
+        from mahjong_quiz.scoring import DEFAULT_RULES
+
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "score_table_cases.json")
+        with open(path, encoding="utf-8") as handle:
+            cases = json.load(handle)["cases"]
+        calculator = ScoresCalculator()
+        for item in cases:
+            with self.subTest(**{k: item[k] for k in ("han", "fu", "isDealer", "isTsumo")}):
+                config = HandConfig(
+                    is_tsumo=item["isTsumo"],
+                    player_wind=EAST if item["isDealer"] else SOUTH,
+                    round_wind=EAST,
+                    options=DEFAULT_RULES,
+                )
+                cost = calculator.calculate_scores(item["han"], item["fu"], config)
+                self.assertEqual(
+                    (cost["main"], cost["additional"], cost["total"]),
+                    (item["main"], item["additional"], item["total"]),
+                )
+
+
 if __name__ == "__main__":
     unittest.main()

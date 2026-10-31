@@ -7,7 +7,7 @@
 
 'use strict';
 
-const POOL_URL = 'data/problems.json';
+const POOL_URL = 'data/problems.json?v=f6cdde97';
 
 let poolPromise = null;
 const shuffled = {};   // 難易度ごとの出題順（一周するまで重複させない）

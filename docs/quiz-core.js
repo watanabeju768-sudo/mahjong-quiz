@@ -80,7 +80,37 @@ function judgeLocally(entry, input) {
   };
 }
 
+/* 点数早見表（ヒント）用に、翻・符から支払いを求める。
+   採点には使わない（採点はあくまで mahjong ライブラリの計算結果）。
+   値は tests/score_table_cases.json（ライブラリの計算結果）と Node のテストで照合している。 */
+const LIMIT_BASE_POINTS = [[13, 8000], [11, 6000], [8, 4000], [6, 3000], [5, 2000]];
+
+function roundUp100(value) {
+  return Math.ceil(value / 100) * 100;
+}
+
+/**
+ * 翻・符・親子・ツモ/ロンから支払いを返す。形は採点データと同じ
+ * { main, additional, total }（ロン=main が総点、子のツモ=main が親の支払い）。
+ */
+function scoreFor(han, fu, isDealer, isTsumo) {
+  const limit = LIMIT_BASE_POINTS.find(([minHan]) => han >= minHan);
+  const base = limit ? limit[1] : Math.min(fu * 2 ** (2 + han), 2000);
+
+  if (!isTsumo) {
+    const main = roundUp100(base * (isDealer ? 6 : 4));
+    return { main: main, additional: 0, total: main };
+  }
+  if (isDealer) {
+    const each = roundUp100(base * 2);
+    return { main: each, additional: each, total: each * 3 };
+  }
+  const main = roundUp100(base * 2);
+  const additional = roundUp100(base);
+  return { main: main, additional: additional, total: main + additional * 2 };
+}
+
 // Node のテストから読めるようにする（ブラウザでは無視される）
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { parsePoints, checkPoints, judgeLocally };
+  module.exports = { parsePoints, checkPoints, judgeLocally, scoreFor };
 }

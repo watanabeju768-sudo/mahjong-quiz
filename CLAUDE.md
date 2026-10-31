@@ -67,6 +67,7 @@ docs/                    ← 生成物。GitHub Pages がここを公開する�
 tests/test_scoring.py    unittest（pytest 不要）
 tests/test_points.mjs    JS の回答判定のテスト（node で実行）
 tests/points_cases.json  Python と JS の共通テストケース
+tests/score_table_cases.json  ヒントの点数早見表の照合データ（ライブラリの計算結果）
 ```
 
 ## 設計方針
@@ -89,6 +90,12 @@ tests/points_cases.json  Python と JS の共通テストケース
   （付け忘れは `test_every_japanese_name_has_a_description` が検出）。
   副底は符の値（20/25/30）で意味が変わるので `FU_BASE_DESCRIPTION` で引き分ける。
   問題画面の「？」で出す用語（場風・ドラ表示牌・ポンなど）は `app.js` の `GLOSSARY`。
+- **ヒントの点数早見表だけは JS で点数を出す（`quiz-core.js` の `scoreFor`）。**
+  採点には使わない。値は `tests/score_table_cases.json`（ライブラリの
+  `ScoresCalculator` の結果）と照合し、Python 側はこのデータがライブラリと一致すること、
+  Node 側は `scoreFor` がこのデータと一致することを確かめる。ルールを変えたら照合データも作り直す。
+- ヒントを開いた問題は「ヒントあり」になり、正解しても全問正解・連続には数えない
+  （連続を途切れさせもしない）。
 - **符の内訳の「どの牌か」は対応付けるだけで、符は計算し直さない。**
   `scoring._fu_source_tiles()` がライブラリ自身の手牌分解と符計算を呼び直し、
   応答とまったく同じ内訳になる分解から牌を拾う。見つからなければ牌の表示を省く。
@@ -159,6 +166,9 @@ tests/points_cases.json  Python と JS の共通テストケース
   `/style.css` のような絶対パスは 404 になる。
 - 内容を更新したら `build_static.py` を実行し直し、`docs/` ごとコミットして
   push する（push した数十秒後に反映される）。
+- `build_static.py` は `index.html` の CSS・JS と `problems.json` の URL に
+  中身のハッシュ（`?v=…`）を付ける。更新後にブラウザが古いファイルを使い続けるのを防ぐため。
+  読み込むファイルを増やしたら `VERSIONED_ASSETS` にも足す。
 
 ## 作業時の注意
 

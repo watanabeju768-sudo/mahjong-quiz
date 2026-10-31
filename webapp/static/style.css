@@ -379,9 +379,71 @@ button.ghost { background: var(--accent-tint); color: var(--accent); }
 button.primary:active:not(:disabled),
 button.ghost:active { transform: scale(.97); }
 button.primary:disabled { opacity: .35; cursor: default; }
+button.ghost:disabled { opacity: .35; cursor: default; }
 button.primary.big { padding: 13px 32px; font-size: 1.0625rem; }
 
 .next-wrap { text-align: center; margin: 8px 0 24px; }
+
+/* --- ヒント（符計算の手順表・点数早見表） ----------------------------------- */
+
+.hint-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 14px; }
+.tabs { display: inline-flex; padding: 3px; border-radius: 12px; background: var(--fill); }
+.tab,
+.segment {
+  font: inherit;
+  font-size: .875rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+.tab[aria-selected="true"],
+.segment[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.hint-flag { font-size: .75rem; color: var(--text-dim); }
+
+.segments { display: inline-flex; align-items: center; padding: 3px; border-radius: 12px; background: var(--fill); margin-bottom: 10px; }
+.segment { padding: 5px 14px; }
+.segment-gap { width: 1px; align-self: stretch; margin: 4px 6px; background: var(--separator); }
+
+.steps { margin: 0 0 16px; padding-left: 1.4em; font-size: .875rem; line-height: 1.7; }
+.steps li + li { margin-top: 4px; }
+.steps b { margin-right: 8px; }
+.steps li::marker { color: var(--accent); font-weight: 700; }
+
+.hint-note { font-size: .8125rem; color: var(--text-dim); margin: 8px 0; }
+
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.hint-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .8125rem;
+  font-variant-numeric: tabular-nums;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--fill);
+}
+.hint-table th,
+.hint-table td { padding: 7px 10px; text-align: center; white-space: nowrap; }
+.hint-table thead th { font-weight: 600; color: var(--text-dim); }
+.hint-table tbody th { text-align: left; font-weight: 600; }
+.hint-table small { display: block; font-size: .6875rem; font-weight: 400; color: var(--text-dim); }
+.hint-table tbody tr { border-top: 1px solid var(--separator); }
+.limit-table tbody tr:first-child { border-top: none; }
+.score-table td.limit { background: var(--accent-tint); font-weight: 600; }
+.score-table td.none { color: var(--text-dim); opacity: .6; }
+.limit-table { margin-top: 10px; }
+.limit-table td { text-align: right; font-weight: 600; }
+
+.hint-used {
+  text-align: center;
+  font-size: .8125rem;
+  color: var(--text-dim);
+  margin: -10px 0 18px;
+}
 
 /* --- 結果 ---------------------------------------------------------------- */
 
@@ -525,7 +587,7 @@ footer code { background: var(--fill); padding: 1px 6px; border-radius: 4px; }
 /* --- 動き・透明度・コントラストの設定に従う ------------------------------ */
 
 @media (prefers-reduced-motion: reduce) {
-  .chip, button.primary, button.ghost, input[type="text"], button.term { transition: none; }
+  .chip, button.primary, button.ghost, input[type="text"], button.term, .tab, .segment { transition: none; }
   button.term:active { transform: none; opacity: .7; }
   .chip:active:not(:disabled),
   button.primary:active:not(:disabled),

@@ -33,6 +33,9 @@ const state = {
   han: null,
   fu: null,
   answered: false,
+  hintUsed: false,
+  hintTab: 'fu',          // ヒントで最後に開いたタブ（fu: 符計算の手順 / table: 点数早見表）
+  tableView: null,        // 早見表で見ている { isDealer, isTsumo }（初期値は問題に合わせる）
   stats: { total: 0, perfect: 0, streak: 0 },
 };
 
@@ -187,6 +190,142 @@ function toggleHelp(button) {
   button.setAttribute('aria-expanded', 'true');
 }
 
+/* --- ヒント（符計算の手順表・点数早見表） ----------------------------------- */
+
+const SCORE_TABLE_FU = [20, 25, 30, 40, 50, 60, 70, 80, 90, 100, 110];
+const LIMIT_ROWS = [
+  { han: 5, label: '満貫', hanText: '5翻' },
+  { han: 6, label: '跳満', hanText: '6〜7翻' },
+  { han: 8, label: '倍満', hanText: '8〜10翻' },
+  { han: 11, label: '三倍満', hanText: '11〜12翻' },
+  { han: 13, label: '役満', hanText: '13翻〜' },
+];
+
+const FU_STEPS_HTML = `
+  <ol class="steps">
+    <li><b>特別な形を先に確認</b>七対子は25符で終わり。平和のツモは20符で終わり。</li>
+    <li><b>副底 20符</b>どんな和了りにも付く基本の符。</li>
+    <li><b>門前でロンなら +10符</b>鳴いていない手でロンしたとき（門前加符）。</li>
+    <li><b>ツモなら +2符</b>鳴いていても付く。平和のツモだけは付かない。</li>
+    <li><b>面子の符</b>刻子・槓子は下の表。順子（123など）は0符。</li>
+    <li><b>雀頭の符</b>白・發・中・場風・自風なら +2符。場風と自風が同じ牌なら +4符。</li>
+    <li><b>待ちの符</b>辺張（12で3待ち）・嵌張（46で5待ち）・単騎（雀頭待ち）は +2符。両面・シャンポンは0符。</li>
+    <li><b>10符単位に切り上げ</b>例: 32符→40符。鳴いた手で合計20符なら30符にする。</li>
+  </ol>
+  <table class="hint-table">
+    <thead><tr><th></th><th>2〜8の数牌<small>中張牌</small></th><th>1・9・字牌<small>么九牌</small></th></tr></thead>
+    <tbody>
+      <tr><th>明刻<small>ポン</small></th><td>2符</td><td>4符</td></tr>
+      <tr><th>暗刻<small>鳴かずに3枚</small></th><td>4符</td><td>8符</td></tr>
+      <tr><th>明槓<small>鳴いてカン</small></th><td>8符</td><td>16符</td></tr>
+      <tr><th>暗槓<small>鳴かずにカン</small></th><td>16符</td><td>32符</td></tr>
+    </tbody>
+  </table>
+  <p class="hint-note">ロンで3枚目がそろった刻子は、鳴かずにそろえていても明刻として数える。</p>`;
+
+/** 早見表のマス 1 つ分の文字。ありえない組み合わせは null。 */
+function tableCell(han, fu, isDealer, isTsumo) {
+  if (fu === 20 && (!isTsumo || han < 2)) return null;    // 20符は平和ツモだけ（2翻から）
+  if (fu === 25 && (han < 2 || (isTsumo && han < 3))) return null;  // 25符は七対子だけ
+  const score = scoreFor(han, fu, isDealer, isTsumo);
+  if (!isTsumo) return String(score.main);
+  if (isDealer) return `${score.main}オール`;
+  return `${score.additional}-${score.main}`;
+}
+
+function scoreTableHtml(view) {
+  const who = view.isDealer ? '親' : '子';
+  const how = view.isTsumo ? 'ツモ' : 'ロン';
+  let html = '<div class="segments">';
+  [[false, '子'], [true, '親']].forEach(([value, label]) => {
+    html += `<button type="button" class="segment" data-view="isDealer" data-value="${value}"`
+      + ` aria-pressed="${view.isDealer === value}">${label}</button>`;
+  });
+  html += '<span class="segment-gap"></span>';
+  [[false, 'ロン'], [true, 'ツモ']].forEach(([value, label]) => {
+    html += `<button type="button" class="segment" data-view="isTsumo" data-value="${value}"`
+      + ` aria-pressed="${view.isTsumo === value}">${label}</button>`;
+  });
+  html += '</div>';
+
+  const format = view.isTsumo
+    ? (view.isDealer ? '「◯◯オール」＝子3人がそれぞれ払う額' : '「子から-親から」の順')
+    : '放銃者が1人で払う額';
+  html += `<p class="hint-note">${who}の${how}（${format}）。翻（横）と符（縦）が交わるマスが点数。`
+    + '色の付いたマスは満貫。</p>';
+
+  html += '<div class="table-scroll"><table class="hint-table score-table"><thead><tr><th></th>';
+  [1, 2, 3, 4].forEach((han) => { html += `<th>${han}翻</th>`; });
+  html += '</tr></thead><tbody>';
+  SCORE_TABLE_FU.forEach((fu) => {
+    html += `<tr><th>${fu}符</th>`;
+    [1, 2, 3, 4].forEach((han) => {
+      const text = tableCell(han, fu, view.isDealer, view.isTsumo);
+      const limit = fu * 2 ** (2 + han) >= 2000;
+      html += text === null
+        ? '<td class="none">—</td>'
+        : `<td${limit ? ' class="limit"' : ''}>${text}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+
+  html += '<table class="hint-table limit-table"><tbody>';
+  LIMIT_ROWS.forEach((row) => {
+    html += `<tr><th>${row.label}<small>${row.hanText}</small></th>`
+      + `<td>${tableCell(row.han, 30, view.isDealer, view.isTsumo)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderHint() {
+  const hint = el('hint');
+  const tabs = [['fu', '符計算の手順'], ['table', '点数早見表']];
+  let html = '<div class="hint-head"><div class="tabs" role="tablist">';
+  tabs.forEach(([key, label]) => {
+    html += `<button type="button" class="tab" role="tab" data-tab="${key}"`
+      + ` aria-selected="${state.hintTab === key}">${label}</button>`;
+  });
+  html += '</div><span class="hint-flag">この問題は「ヒントあり」になります</span></div>';
+  html += `<div class="hint-body" role="tabpanel">${state.hintTab === 'fu' ? FU_STEPS_HTML : scoreTableHtml(state.tableView)}</div>`;
+  hint.innerHTML = html;
+
+  hint.querySelectorAll('.tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      state.hintTab = tab.dataset.tab;
+      renderHint();
+    });
+  });
+  hint.querySelectorAll('.segment').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.tableView[button.dataset.view] = button.dataset.value === 'true';
+      renderHint();
+    });
+  });
+}
+
+function openHint() {
+  if (state.answered) return;
+  state.hintUsed = true;
+  if (!state.tableView) {
+    state.tableView = { isDealer: state.problem.isDealer, isTsumo: state.problem.isTsumo };
+  }
+  renderHint();
+  el('hint').hidden = false;
+  el('hint-open').setAttribute('aria-expanded', 'true');
+  el('hint').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function toggleHint() {
+  if (el('hint').hidden) {
+    openHint();
+  } else {
+    el('hint').hidden = true;
+    el('hint-open').setAttribute('aria-expanded', 'false');
+  }
+}
+
 /* --- 回答フォーム -------------------------------------------------------- */
 
 function buildChips(container, values, onSelect) {
@@ -220,6 +359,11 @@ function resetForm() {
   state.han = null;
   state.fu = null;
   state.answered = false;
+  state.hintUsed = false;
+  state.tableView = null;
+  el('hint').hidden = true;
+  el('hint-open').setAttribute('aria-expanded', 'false');
+  el('hint-open').disabled = false;
 
   document.querySelectorAll('.chip').forEach((chip) => {
     chip.classList.remove('selected');
@@ -255,6 +399,8 @@ function lockForm() {
   el('points').disabled = true;
   el('submit').disabled = true;
   el('giveup').disabled = true;
+  el('hint-open').disabled = true;
+  el('hint').hidden = true;
 }
 
 /* --- 結果の描画 ---------------------------------------------------------- */
@@ -295,12 +441,20 @@ function judgeRow(name, ok, yours, truth) {
 function renderResult(data) {
   const correct = data.correct;
   const perfect = data.hanOk && data.fuOk && data.pointsOk;
+  const hintUsed = state.hintUsed;
   const result = el('result');
 
   let html = '';
   html += `<div class="verdict ${perfect ? 'ok' : 'ng'}">`;
-  html += perfect ? '正解！ すばらしい 🀄' : '惜しい！ 内訳を確認しましょう';
+  if (perfect) {
+    html += hintUsed ? '正解！ 次はヒントなしで挑戦 🀄' : '正解！ すばらしい 🀄';
+  } else {
+    html += '惜しい！ 内訳を確認しましょう';
+  }
   html += '</div>';
+  if (hintUsed) {
+    html += '<div class="hint-used">ヒントあり（全問正解・連続の記録には数えません）</div>';
+  }
 
   html += '<div class="judge-list">';
   html += judgeRow('翻数', data.hanOk, state.han === null ? '' : `${state.han}翻`, `${correct.han}翻`);
@@ -369,11 +523,12 @@ function renderResult(data) {
   result.scrollIntoView({ behavior: 'smooth', block: 'start' });
   el('next').focus({ preventScroll: true });
 
+  // ヒントを使った正解は「全問正解」「連続」に数えない（連続は途切れさせもしない）
   state.stats.total += 1;
-  if (perfect) {
+  if (perfect && !hintUsed) {
     state.stats.perfect += 1;
     state.stats.streak += 1;
-  } else {
+  } else if (!perfect) {
     state.stats.streak = 0;
   }
   el('stat-total').textContent = state.stats.total;
@@ -440,6 +595,7 @@ el('points').addEventListener('keydown', (event) => {
 });
 el('submit').addEventListener('click', submitAnswer);
 el('giveup').addEventListener('click', submitAnswer);
+el('hint-open').addEventListener('click', toggleHint);
 el('next').addEventListener('click', loadProblem);
 el('difficulty').addEventListener('change', loadProblem);
 el('preset').addEventListener('change', loadProblem);
